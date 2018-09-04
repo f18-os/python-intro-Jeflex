@@ -7,7 +7,7 @@ import subprocess # executing program
 
 # set input and output files
 if len(sys.argv) is not 4:
-    print("Correct usage: wordCountTest.py <input text file> <output file> <solution key file>")
+    print("Correct usage: wordCountTest.pyd <input text file> <output file> <solution key file>")
     exit()
 
 textFname = sys.argv[1]
