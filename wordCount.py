@@ -26,5 +26,5 @@ with open(inFile) as file:
 
 with open(outFile, 'w') as out:
     for word in sorted(dictionary):
-        out.write(word+' : '+str(dictionary[word]))
+        out.write(word+' '+str(dictionary[word]))
         out.write('\n')
