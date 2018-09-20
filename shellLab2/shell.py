@@ -13,12 +13,18 @@ import subprocess
 
 while(1):
     try:
-        sys.stdout.write(os.getcwd() + ' $')
+        # a = os.environ["PS1"].pop()
+        # if a == '':
+        #     sys.stdout.write(os.getcwd() + ' $')
+        # else:
+        #     sys.stdout.write(os.getcwd() + os.environ["PS1"])
         # args = str(sys.stdin.readline().strip('\n').split(' '))
+        sys.stdout.write(os.getcwd() + ' $')
         args = input('').split(' ')
         if 'exit' == args[0]:
             break
-
+        elif '' == args[0]:
+            continue
         elif 'cd' == args[0]:
             try:
                 os.chdir(args[1])
@@ -27,13 +33,10 @@ while(1):
 
         else:
             pid = os.getpid()
-            argsPiped = []
+
             ret = 0
             if '<' in args:
                 ind = args.index('<')
-                argsPiped = []
-                argsPiped.append(args[ind - 1])
-                argsPiped.append(args[ind + 1])
 
 
                 os.write(1, ("About to fork for input redirect (pid=%d)\n" % pid).encode())
@@ -86,77 +89,73 @@ while(1):
             if '|' in args:
                 ind = args.index('|')
 
-                argsPiped = args[ind - 1 : ]
-                print(argsPiped)
-
                 os.write(1, ("About to fork for pipe (pid=%d)\n" % pid).encode())
+
+                pr,pw = os.pipe()
+                for f in (pr, pw):
+                    os.set_inheritable(f, True)
+                print("pipe fds: pr=%d, pw=%d" % (pr, pw))
+
+                import fileinput
+
+                print("About to fork (pid=%d)" % pid)
 
                 rc = os.fork()
 
                 if rc < 0:
-                    os.write(2, ("fork failed, returning %d\n" % rc).encode())
+                    print("fork failed, returning %d\n" % rc, file=sys.stderr)
                     sys.exit(1)
 
-                elif rc == 0:
-                    os.write(1, ("PipeChild: My pid==%d.  Parent's pid=%d\n" %
-                                 (os.getpid(), pid)).encode())
+                elif rc == 0:                   #  child - will write to pipe
+                    print('In pipe')
+                    print("Child: My pid==%d.  Parent's pid=%d" % (os.getpid(), pid), file=sys.stderr)
+                    # args = ["wc", "p3-exec.py"]
 
-                    os.close(1)
-                    sys.stdout = open("outputForked.txt", "w")
-                    fd = sys.stdout.fileno()
-                    os.set_inheritable(fd, True)
-                    os.write(2, ("PipeChild: opened fd=%d for writing\n" % fd).encode())
-                    argsPiped.remove('|')
-                    hold = argsPiped[0]
-                    argsPiped.remove(argsPiped[0])
-                    argsPiped.append(hold)
+                    os.close(1)                 # redirect child's stdout
+                    os.dup(pw)
+                    # sys.stdout = open(args[0],'w+')
+                    for fd in (pr, pw):
+                        os.close(fd)
 
-                    if '/' in argsPiped[0]:
+                    for dir in re.split(":", os.environ['PATH']):
+                        program = "%s/%s" % (dir, args[0])
                         try:
-                            os.execve(argsPiped[0], argsPiped, os.environ)
-                        except:
+                            os.execve(program, args, os.environ)
+                        except FileNotFoundError:
                             pass
-                    else:
-                        for dir in re.split(":", os.environ['PATH']):
-                            program = "%s/%s" % (dir, argsPiped[0])
-                            try:
-                                ret = os.execve(program, argsPiped, os.environ)
 
-                            except FileNotFoundError:
-                                pass
-
-                    os.write(2, ("PipeChild:    Error: Could not exec %s\n" % argsPiped[0]).encode())
-                    sys.exit(1)
-
-                else:
-                    os.write(1, ("Parent: My pid=%d.  Child's pid=%d\n" %
-                                 (pid, rc)).encode())
-                    childPidCode = os.wait()
-                    os.write(1, ("Parent: Child %d terminated with exit code %d\n" %
-                childPidCode).encode())
+                else:                           # parent (forked ok)
+                    print('Out pipe')
+                    print("Parent: My pid==%d.  Child's pid=%d" % (os.getpid(), rc), file=sys.stderr)
+                    os.close(0)
+                    os.dup(pr)
+                    for fd in (pw, pr):
+                        os.close(fd)
+                    # for line in fileinput.input():
+                    #     print("From child: <%s>" % line)
 
 
         # resume
+            else:
+                pid = os.getpid()
 
-            pid = os.getpid()
-
-            os.write(1, ("About to fork (pid=%d)\n" % pid).encode())
-
-            rc = os.fork()
-            print("began bottom fork")
-            if rc < 0:
-                os.write(2, ("fork failed, returning %d\n" % rc).encode())
-                sys.exit(1)
-
-            elif rc == 0:
-                os.write(1, ("Child: My pid==%d.  Parent's pid=%d\n" %
-                             (os.getpid(), pid)).encode())
-
-                os.close(1)
+                # os.write(1, ("About to fork (pid=%d)\n" % pid).encode())
+                #
+                # rc = os.fork()
+                # print("began bottom fork")
+                # if rc < 0:
+                #     os.write(2, ("fork failed, returning %d\n" % rc).encode())
+                #     sys.exit(1)
+                #
+                # elif rc == 0:
+                #     os.write(1, ("Child: My pid==%d.  Parent's pid=%d\n" %
+                #                  (os.getpid(), pid)).encode())
+                #
+                #     os.close(1)
                 sys.stdout = open("output.txt", "w")
                 fd = sys.stdout.fileno()
                 os.set_inheritable(fd, True)
-                os.write(2, ("Child: opened fd=%d for writing\n" % fd).encode())
+                # os.write(2, ("Child: opened fd=%d for writing\n" % fd).encode())
 
                 if '/' in args[0]:
                     try:
@@ -174,11 +173,11 @@ while(1):
                 os.write(2, ("Child:    Error: Could not exec %s\n" % args[0]).encode())
                 sys.exit(1)
 
-            else:
-                os.write(1, ("Parent: My pid=%d.  Child's pid=%d\n" %
-                             (pid, rc)).encode())
-                childPidCode = os.wait()
-                os.write(1, ("Parent: Child %d terminated with exit code %d\n" %
-            childPidCode).encode())
+        # else:
+        #     os.write(1, ("Parent: My pid=%d.  Child's pid=%d\n" %
+        #                  (pid, rc)).encode())
+        #     childPidCode = os.wait()
+        #     os.write(1, ("Parent: Child %d terminated with exit code %d\n" %
+        # childPidCode).encode())
     except EOFError:
         break
