@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Sep  9 12:49:13 2018
-
-@author: Phillip
-"""
 
 import sys
 import re
@@ -26,15 +21,24 @@ while(1):
         elif '' == args[0]:
             continue
         elif 'cd' == args[0]:
-            try:
-                os.chdir(args[1])
-            except:
-                print('File path could not be found.')
+            if args[1] == '..':
+                a = str(os.getcwd()).split('/')
+                b='/'
+                for s in a[:len(a)-1]:
+                    b = b +'/'+ s
+                try:
+                    os.chdir(b)
+                except:
+                    print('File path could not be found.')
+            else:
+                try:
+                    os.chdir(args[1])
+                except:
+                    print('File path could not be found.')
 
         else:
             pid = os.getpid()
 
-            ret = 0
             if '<' in args:
                 ind = args.index('<')
 
@@ -51,27 +55,27 @@ while(1):
                     os.write(1, ("InRedirChild: My pid==%d.  Parent's pid=%d\n" %
                                  (os.getpid(), pid)).encode())
 
-                    os.close(1)
-                    sys.stdout = open("outputRedirect.txt", "w")
+                    os.close(0)
+                    sys.stdin = open(args[1], "w")
                     fd = sys.stdout.fileno()
                     os.set_inheritable(fd, True)
                     os.write(2, ("InRedirChild: opened fd=%d for writing\n" % fd).encode())
 
-                    if '/' in argsPiped[0]:
+                    if '/' in args[0]:
                         try:
-                            os.execve(argsPiped[0], argsPiped, os.environ)
+                            os.execve(args[0], args, os.environ)
                         except:
                             pass
                     else:
                         for dir in re.split(":", os.environ['PATH']):
-                            program = "%s/%s" % (dir, argsPiped[0])
+                            program = "%s/%s" % (dir, args[0])
                             try:
-                                ret = os.execve(program, argsPiped, os.environ)
+                                ret = os.execve(program, args, os.environ)
 
                             except FileNotFoundError:
                                 pass
 
-                    os.write(2, ("InRedirChild:    Error: Could not exec %s\n" % argsPiped[0]).encode())
+                    os.write(2, ("InRedirChild:    Error: Could not exec %s\n" % args[0]).encode())
                     sys.exit(1)
 
                 else:
@@ -81,9 +85,6 @@ while(1):
 
                     os.write(1, ("Parent: Child %d terminated with exit code %d\n" %
                 childPidCode).encode())
-
-
-
 
             pid = os.getpid()
             if '|' in args:
