@@ -14,6 +14,7 @@ while(1):
         # else:
         #     sys.stdout.write(os.getcwd() + os.environ["PS1"])
         # args = str(sys.stdin.readline().strip('\n').split(' '))
+        # os.environ['PS1'] = '**'
         if 'PS1' in os.environ:
             sys.stdout.write(os.getcwd() + os.environ['PS1'] )
         else:
