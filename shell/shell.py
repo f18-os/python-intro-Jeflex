@@ -8,16 +8,16 @@ import subprocess
 
 while(1):
     try:
-        # a = os.environ["PS1"].pop()
+        # a = os.environ["PS1"]
         # if a == '':
         #     sys.stdout.write(os.getcwd() + ' $')
         # else:
         #     sys.stdout.write(os.getcwd() + os.environ["PS1"])
         # args = str(sys.stdin.readline().strip('\n').split(' '))
-        # if os.environ['PS1']:
-        #     sys.stdout.write(os.getcwd() + os.environ['PS1'] )
-        # else:
-        sys.stdout.write(os.getcwd() + ' $')
+        if 'PS1' in os.environ:
+            sys.stdout.write(os.getcwd() + os.environ['PS1'] )
+        else:
+            sys.stdout.write(os.getcwd() + ' $')
         args = input('').split(' ')
         if 'exit' == args[0]:
             break
