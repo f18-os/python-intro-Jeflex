@@ -14,6 +14,9 @@ while(1):
         # else:
         #     sys.stdout.write(os.getcwd() + os.environ["PS1"])
         # args = str(sys.stdin.readline().strip('\n').split(' '))
+        # if os.environ['PS1']:
+        #     sys.stdout.write(os.getcwd() + os.environ['PS1'] )
+        # else:
         sys.stdout.write(os.getcwd() + ' $')
         args = input('').split(' ')
         if 'exit' == args[0]:
@@ -93,6 +96,7 @@ while(1):
                 os.write(1, ("About to fork for pipe (pid=%d)\n" % pid).encode())
 
                 pr,pw = os.pipe()
+
                 for f in (pr, pw):
                     os.set_inheritable(f, True)
                 print("pipe fds: pr=%d, pw=%d" % (pr, pw))
@@ -112,23 +116,33 @@ while(1):
                     print("Child: My pid==%d.  Parent's pid=%d" % (os.getpid(), pid), file=sys.stderr)
                     # args = ["wc", "p3-exec.py"]
 
-                    os.close(1)                 # redirect child's stdout
+                    os.close(0)                 # redirect child's stdout
                     os.dup(pw)
                     # sys.stdout = open(args[0],'w+')
                     for fd in (pr, pw):
                         os.close(fd)
-
-                    for dir in re.split(":", os.environ['PATH']):
-                        program = "%s/%s" % (dir, args[0])
+                    # re = os.fork()
+                    # if re < 0:
+                    #     print("fork failed, returning %d\n" % re, file=sys.stderr)
+                    #     sys.exit(1)
+                    # if re == 0:s
+                    if '/' in args[3]:
                         try:
-                            os.execve(program, args, os.environ)
-                        except FileNotFoundError:
+                            os.execve(args[3], args, os.environ)
+                        except:
                             pass
-
+                    else:
+                        for dir in re.split(":", os.environ['PATH']):
+                            program = "%s/%s" % (dir, args[3])
+                            try:
+                                os.execve(program, args, os.environ)
+                            except FileNotFoundError:
+                                pass
+                    sys.exit(1)
                 else:                           # parent (forked ok)
                     print('Out pipe')
                     print("Parent: My pid==%d.  Child's pid=%d" % (os.getpid(), rc), file=sys.stderr)
-                    os.close(0)
+                    os.close(1)
                     os.dup(pr)
                     for fd in (pw, pr):
                         os.close(fd)
